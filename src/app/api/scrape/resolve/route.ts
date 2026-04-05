@@ -157,6 +157,10 @@ async function enrichWithAppleMusic(result: ResolveResult): Promise<void> {
         topSongs: am.topSongs,
         albums: am.albums,
       };
+      // Use Apple Music name if current name looks like a handle (no spaces)
+      if (am.name && !result.artistName.includes(" ")) {
+        result.artistName = am.name;
+      }
       // Use Apple Music data to fill gaps
       if (!result.genres || result.genres.length === 0) {
         // Collect genres from artist + albums
