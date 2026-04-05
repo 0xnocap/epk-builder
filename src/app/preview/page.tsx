@@ -70,12 +70,12 @@ export default function PreviewPage() {
   const t =
     theme === "dark"
       ? {
-          bg: "#09090b",
-          surface: "#111113",
+          bg: "#0f0f11",
+          surface: "#181818",
           text: "#ffffff",
-          muted: "rgba(255,255,255,0.5)",
-          border: "rgba(255,255,255,0.07)",
-          glass: "rgba(255,255,255,0.04)",
+          muted: "rgba(255,255,255,0.7)",
+          border: "rgba(255,255,255,0.12)",
+          glass: "rgba(255,255,255,0.06)",
           highlight: secondary,
         }
       : {
@@ -90,7 +90,7 @@ export default function PreviewPage() {
 
   const template = data.selectedTemplate || "bold";
   const artistName = data.artistName || "ARTIST NAME";
-  const bio = data.bio || "Your bio will appear here.";
+  const bio = data.appleMusicBio || data.bio || "Your bio will appear here.";
   const genre = data.genre;
   const location = data.location;
   const heroImage = data.imagePreviews[0] || null;
@@ -285,8 +285,7 @@ export default function PreviewPage() {
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="flex flex-col gap-8"
           >
@@ -298,7 +297,7 @@ export default function PreviewPage() {
                     className="p-5 rounded-2xl text-center transition-all hover:scale-[1.02]"
                     style={{ background: t.glass, border: `1px solid ${t.border}`, textDecoration: "none", color: "inherit" }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="#1db954" className="mx-auto mb-2">
-                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02z"/>
+                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
                     </svg>
                     <div className="font-display font-bold text-2xl">{formatNumber(data.spotifyMonthlyListeners)}</div>
                     <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>Monthly Listeners</div>
@@ -364,7 +363,7 @@ export default function PreviewPage() {
                   style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
                   whileHover={{ borderColor: "#1db95440", color: "#1db954", scale: 1.03 }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02z"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
                   Spotify
                 </motion.a>
               )}
@@ -395,8 +394,7 @@ export default function PreviewPage() {
       <section className="py-24 px-8 md:px-16 max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 28 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
           <SectionLabel label="About" color={secondary} />
@@ -435,7 +433,7 @@ export default function PreviewPage() {
           style={{ background: t.surface, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}
         >
           <div className="max-w-5xl mx-auto">
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <SectionLabel label="Music" color={secondary} />
 
               {/* Spotify / SoundCloud embed */}
@@ -494,8 +492,7 @@ export default function PreviewPage() {
           <div className="max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               <SectionLabel label="Gallery" color={secondary} />
@@ -509,8 +506,7 @@ export default function PreviewPage() {
                       gridColumn: i === 0 ? "span 2" : "span 1",
                     }}
                     initial={{ opacity: 0, scale: 0.97 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
+                    animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.07 }}
                     whileHover={{ scale: 1.02 }}
                   >
@@ -532,7 +528,7 @@ export default function PreviewPage() {
       {(data.pressQuotes?.length > 0 || data.achievements?.length > 0) && (
         <section className="py-24 px-8 md:px-16" style={{ background: t.surface, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
           <div className="max-w-5xl mx-auto">
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <SectionLabel label="Press" color={secondary} />
               {data.pressQuotes?.length > 0 && (
                 <div className="mt-8 grid md:grid-cols-2 gap-4">
@@ -542,8 +538,7 @@ export default function PreviewPage() {
                       className="p-6 rounded-2xl"
                       style={{ background: t.glass, border: `1px solid ${t.border}` }}
                       initial={{ opacity: 0, y: 12 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
                     >
                       <p className="text-sm leading-relaxed italic" style={{ color: t.muted }}>"{pq.quote}"</p>
@@ -572,8 +567,7 @@ export default function PreviewPage() {
           <div className="max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               <SectionLabel label="Shows" color={secondary} />
@@ -591,8 +585,7 @@ export default function PreviewPage() {
                         border: `1px solid ${t.border}`,
                       }}
                       initial={{ opacity: 0, x: -12 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
+                      animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.06 }}
                       whileHover={{
                         borderColor: `${secondary}30`,
@@ -650,8 +643,7 @@ export default function PreviewPage() {
           <div className="max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               <SectionLabel label="Contact" color={secondary} />

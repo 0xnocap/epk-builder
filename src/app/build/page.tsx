@@ -196,7 +196,7 @@ function BuildPageInner() {
           sourcePlatform: d.source || "manual",
           artistName: d.artistName || "",
           genre: d.genres?.[0] || "",
-          bio: d.bio || "",
+          bio: d.appleMusic?.bio || d.bio || "",
           imagePreviews: d.images || [],
           musicLinks: {
             spotify: d.spotify?.url || d.musicLinks?.spotify,

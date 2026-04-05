@@ -115,18 +115,24 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
     }
   }
 
-  // Spotify monthly listeners (from page scrape in spotify route)
+  // Spotify monthly listeners - scrape directly from public page (no API needed)
   const spotifyUrl = result.musicLinks?.spotify;
   if (spotifyUrl) {
     const spMatch = spotifyUrl.match(/artist\/([a-zA-Z0-9]+)/);
     if (spMatch) {
       tasks.push(
-        fetch(`${baseUrl}/api/spotify?artistId=${spMatch[1]}`)
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.monthlyListeners) result.spotifyMonthlyListeners = d.monthlyListeners;
-            if (d.genres?.length && (!result.genres || result.genres.length === 0)) {
-              result.genres = d.genres;
+        fetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
+          headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        })
+          .then((r) => r.text())
+          .then((html) => {
+            const mlMatch = html.match(/content="[^"]*?([\d,.]+[MKB]?) monthly listeners/i);
+            if (mlMatch) {
+              const raw = mlMatch[1].replace(/,/g, "");
+              if (raw.endsWith("M")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000_000);
+              else if (raw.endsWith("K")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000);
+              else if (raw.endsWith("B")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000_000_000);
+              else result.spotifyMonthlyListeners = parseInt(raw);
             }
           })
           .catch(() => {})

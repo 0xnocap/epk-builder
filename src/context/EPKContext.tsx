@@ -124,7 +124,12 @@ interface SerializedDraft {
   pressQuotes?: EPKData["pressQuotes"];
   achievements?: string[];
   igFollowerCount?: number | null;
+  tiktokFollowerCount?: number | null;
+  spotifyMonthlyListeners?: number | null;
   genres?: string[];
+  appleMusicBio?: string;
+  appleMusicTopSongs?: EPKData["appleMusicTopSongs"];
+  appleMusicUrl?: string;
 }
 
 const STORAGE_KEY = "epk-draft";
@@ -213,7 +218,12 @@ export function EPKProvider({ children }: { children: React.ReactNode }) {
           pressQuotes: draft.pressQuotes ?? [],
           achievements: draft.achievements ?? [],
           igFollowerCount: draft.igFollowerCount ?? null,
+          tiktokFollowerCount: draft.tiktokFollowerCount ?? null,
+          spotifyMonthlyListeners: draft.spotifyMonthlyListeners ?? null,
           genres: draft.genres ?? [],
+          appleMusicBio: draft.appleMusicBio ?? "",
+          appleMusicTopSongs: draft.appleMusicTopSongs ?? [],
+          appleMusicUrl: draft.appleMusicUrl ?? "",
         });
         setCurrentStep(draft.currentStep ?? 0);
       } catch (e) {
@@ -272,7 +282,12 @@ export function EPKProvider({ children }: { children: React.ReactNode }) {
         pressQuotes: d.pressQuotes,
         achievements: d.achievements,
         igFollowerCount: d.igFollowerCount,
+        tiktokFollowerCount: d.tiktokFollowerCount,
+        spotifyMonthlyListeners: d.spotifyMonthlyListeners,
         genres: d.genres,
+        appleMusicBio: d.appleMusicBio,
+        appleMusicTopSongs: d.appleMusicTopSongs,
+        appleMusicUrl: d.appleMusicUrl,
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
