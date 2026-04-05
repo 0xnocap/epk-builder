@@ -26,6 +26,8 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 75%;
+  scrollbar-gutter: stable;
 }
 
 body {

@@ -228,28 +228,27 @@ export default function PreviewPage() {
       )}
 
       {template === "clean" && (
-        <section ref={heroRef} className="relative min-h-screen overflow-hidden">
-          <div className="grid md:grid-cols-2 min-h-screen">
+        <section ref={heroRef} className="relative min-h-[70vh] overflow-hidden">
+          <div className="grid md:grid-cols-2 min-h-[70vh]">
             {/* Left: Image */}
-            <motion.div className="relative h-[50vh] md:h-auto" style={{ y: heroY }}>
+            <motion.div className="relative h-[40vh] md:h-auto" style={{ y: heroY }}>
               {heroImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={heroImage} alt="Hero" className="w-full h-full object-cover" style={{ filter: "saturate(1.1)" }} />
+                <img src={heroImage} alt="Hero" className="w-full h-full object-cover object-top" style={{ filter: "saturate(1.1)" }} />
               ) : (
                 <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${primary} 0%, #1a0a2e 100%)` }} />
               )}
               <div className="absolute inset-0 md:hidden" style={{ background: `linear-gradient(to bottom, transparent 60%, ${t.bg} 100%)` }} />
             </motion.div>
             {/* Right: Info */}
-            <div className="flex flex-col justify-center px-8 md:px-16 py-16 relative">
+            <div className="flex flex-col justify-center px-8 md:px-16 py-12 relative">
               <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
-                <div className="text-xs font-bold tracking-[0.3em] uppercase mb-6" style={{ color: secondary }}>Electronic Press Kit</div>
-                <h1 className="font-bold leading-none tracking-tight mb-6" style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}>{artistName}</h1>
-                <div className="flex flex-wrap items-center gap-3 mb-8">
+                <div className="text-xs font-bold tracking-[0.3em] uppercase mb-5" style={{ color: secondary }}>Electronic Press Kit</div>
+                <h1 className="font-bold leading-none tracking-tight mb-5" style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}>{artistName}</h1>
+                <div className="flex flex-wrap items-center gap-3">
                   {genre && <span className="text-sm font-semibold px-3 py-1 rounded-full" style={{ background: `${secondary}18`, color: secondary, border: `1px solid ${secondary}30` }}>{genre}</span>}
                   {location && <span className="text-sm" style={{ color: t.muted }}>{location}</span>}
                 </div>
-                {bio && <p className="text-base leading-relaxed max-w-md" style={{ color: t.muted }}>{bio}</p>}
               </motion.div>
             </div>
           </div>
@@ -257,24 +256,17 @@ export default function PreviewPage() {
       )}
 
       {template === "editorial" && (
-        <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden">
+        <section ref={heroRef} className="relative min-h-[80vh] flex items-end overflow-hidden">
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${t.bg} 0%, ${primary} 100%)` }} />
           <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 60% 50% at 50% 60%, ${secondary}08 0%, transparent 70%)` }} />
-          <motion.div className="relative z-10 w-full px-8 md:px-16 py-20 max-w-4xl mx-auto">
+          <motion.div className="relative z-10 w-full px-8 md:px-16 pb-16 pt-20 max-w-5xl mx-auto">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.1 }}>
-              <div className="text-xs font-bold tracking-[0.3em] uppercase mb-8" style={{ color: secondary }}>Electronic Press Kit</div>
-              <h1 className="font-bold leading-[0.9] tracking-tight mb-8" style={{ fontSize: "clamp(3rem, 10vw, 7rem)" }}>{artistName}</h1>
-              <div className="flex flex-wrap items-center gap-4 mb-10">
+              <div className="text-xs font-bold tracking-[0.3em] uppercase mb-6" style={{ color: secondary }}>Electronic Press Kit</div>
+              <h1 className="font-bold leading-[0.9] tracking-tight mb-6" style={{ fontSize: "clamp(3rem, 10vw, 7rem)" }}>{artistName}</h1>
+              <div className="flex flex-wrap items-center gap-4">
                 {genre && <span className="text-sm font-semibold px-4 py-1.5 rounded-full" style={{ background: `${secondary}15`, color: secondary, border: `1px solid ${secondary}25` }}>{genre}</span>}
                 {location && <span className="text-sm" style={{ color: t.muted }}>{location}</span>}
               </div>
-              {bio && <p className="text-xl leading-loose max-w-2xl" style={{ color: t.muted }}>{bio}</p>}
-              {heroImage && (
-                <motion.div className="mt-12 rounded-2xl overflow-hidden" style={{ maxWidth: 400 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={heroImage} alt="" className="w-full aspect-[4/3] object-cover" />
-                </motion.div>
-              )}
             </motion.div>
           </motion.div>
         </section>
