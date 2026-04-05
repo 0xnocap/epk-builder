@@ -107,13 +107,29 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
     const ttMatch = tiktokUrl.match(/tiktok\.com\/@([a-zA-Z0-9._]+)/);
     if (ttMatch) tiktokUsername = ttMatch[1];
   }
-  // If no TikTok URL found, try the IG username variants
+  // If no TikTok URL found, try IG username and common variants
   if (!tiktokUsername && result.source === "instagram") {
     const igUrl = result.socialLinks?.instagram || "";
     const igMatch = igUrl.match(/instagram\.com\/([a-zA-Z0-9._]+)/);
-    if (igMatch) tiktokUsername = igMatch[1];
-  }
-  if (tiktokUsername) {
+    if (igMatch) {
+      // Try multiple variants: exact, with underscore, without trailing chars
+      const base = igMatch[1];
+      const variants = [base, `${base}_`, base.replace(/[_.\d]+$/, "")].filter((v, i, a) => a.indexOf(v) === i);
+      for (const variant of variants) {
+        tasks.push(
+          fetch(`${baseUrl}/api/scrape/tiktok?username=${encodeURIComponent(variant)}`)
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.followerCount && !result.tiktokFollowerCount) {
+                result.tiktokFollowerCount = d.followerCount;
+                result.socialLinks.tiktok = `https://www.tiktok.com/@${variant}`;
+              }
+            })
+            .catch(() => {})
+        );
+      }
+    }
+  } else if (tiktokUsername) {
     tasks.push(
       fetch(`${baseUrl}/api/scrape/tiktok?username=${encodeURIComponent(tiktokUsername)}`)
         .then((r) => r.json())
@@ -135,8 +151,8 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
     const spMatch = spotifyUrl.match(/artist\/([a-zA-Z0-9]+)/);
     if (spMatch) {
       tasks.push(
-        proxyFetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
-          headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        fetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
         })
           .then((r) => r.text())
           .then((html) => {
@@ -357,9 +373,13 @@ export async function POST(request: NextRequest) {
         result.scrapeAvailable = false;
 
         // Try common link-in-bio URLs to find music/social links
+        // Try both the IG username and common variations
+        const cleanName = username.replace(/[_.\d]+$/, ""); // "oliviadeano" -> "oliviadeano", or strip trailing _ digits
         const bioLinkAttempts = [
           `https://linktr.ee/${username}`,
+          `https://linktr.ee/${cleanName}`,
           `https://${username}.lnk.to/all`,
+          `https://${cleanName}.lnk.to/all`,
         ];
         for (const bioUrl of bioLinkAttempts) {
           try {
