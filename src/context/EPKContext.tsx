@@ -41,11 +41,17 @@ export interface EPKData {
     images: string[];
     genres: string[];
   } | null;
+  // Apple Music
+  appleMusicBio: string;
+  appleMusicTopSongs: { name: string; albumName: string; artworkUrl: string | null; url: string }[];
+  appleMusicUrl: string;
   // Press & achievements
   pressQuotes: { quote: string; source: string }[];
   achievements: string[];
   // Stats
   igFollowerCount: number | null;
+  tiktokFollowerCount: number | null;
+  spotifyMonthlyListeners: number | null;
   genres: string[];
   // User save tracking
   savedByUserId: string | null;
@@ -76,9 +82,14 @@ const defaultData: EPKData = {
   topTracks: [],
   socialLinks: {},
   autoData: null,
+  appleMusicBio: "",
+  appleMusicTopSongs: [],
+  appleMusicUrl: "",
   pressQuotes: [],
   achievements: [],
   igFollowerCount: null,
+  tiktokFollowerCount: null,
+  spotifyMonthlyListeners: null,
   genres: [],
   savedByUserId: null,
   savedAt: null,

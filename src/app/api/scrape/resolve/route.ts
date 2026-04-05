@@ -8,6 +8,7 @@ import {
   findMusicLinks,
   findSocialLinks,
 } from "@/lib/scrape-utils";
+import { searchArtist as searchAppleMusic } from "@/lib/apple-music";
 
 interface ResolveResult {
   source: "instagram" | "tiktok" | "spotify" | "manual";
@@ -36,6 +37,17 @@ interface ResolveResult {
   socialLinks: Record<string, string>;
   scrapeAvailable: boolean;
   igFollowerCount: number | null;
+  tiktokFollowerCount: number | null;
+  spotifyMonthlyListeners: number | null;
+  appleMusic: {
+    found: boolean;
+    bio?: string;
+    genres?: string[];
+    artworkUrl?: string;
+    url?: string;
+    topSongs?: { name: string; albumName: string; artworkUrl: string | null; url: string }[];
+    albums?: { name: string; genres: string[]; artworkUrl: string | null; url: string }[];
+  } | null;
 }
 
 async function fetchSpotifyData(artistId: string, baseUrl: string) {
@@ -84,6 +96,90 @@ async function scrapeTikTok(username: string, baseUrl: string) {
   }
 }
 
+async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): Promise<void> {
+  const tasks: Promise<void>[] = [];
+
+  // TikTok followers
+  const tiktokUrl = result.socialLinks?.tiktok;
+  if (tiktokUrl) {
+    const ttMatch = tiktokUrl.match(/tiktok\.com\/@([a-zA-Z0-9._]+)/);
+    if (ttMatch) {
+      tasks.push(
+        fetch(`${baseUrl}/api/scrape/tiktok?username=${encodeURIComponent(ttMatch[1])}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.followerCount) result.tiktokFollowerCount = d.followerCount;
+          })
+          .catch(() => {})
+      );
+    }
+  }
+
+  // Spotify monthly listeners (from page scrape in spotify route)
+  const spotifyUrl = result.musicLinks?.spotify;
+  if (spotifyUrl) {
+    const spMatch = spotifyUrl.match(/artist\/([a-zA-Z0-9]+)/);
+    if (spMatch) {
+      tasks.push(
+        fetch(`${baseUrl}/api/spotify?artistId=${spMatch[1]}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.monthlyListeners) result.spotifyMonthlyListeners = d.monthlyListeners;
+            if (d.genres?.length && (!result.genres || result.genres.length === 0)) {
+              result.genres = d.genres;
+            }
+          })
+          .catch(() => {})
+      );
+    }
+  }
+
+  await Promise.all(tasks);
+}
+
+async function enrichWithAppleMusic(result: ResolveResult): Promise<void> {
+  if (!result.artistName) return;
+  try {
+    const am = await searchAppleMusic(result.artistName);
+    if (am) {
+      result.appleMusic = {
+        found: true,
+        bio: am.bio,
+        genres: am.genres,
+        artworkUrl: am.artworkUrl || undefined,
+        url: am.url,
+        topSongs: am.topSongs,
+        albums: am.albums,
+      };
+      // Use Apple Music data to fill gaps
+      if (!result.genres || result.genres.length === 0) {
+        // Collect genres from artist + albums
+        const allGenres = [...(am.genres || [])];
+        for (const album of am.albums.slice(0, 5)) {
+          for (const g of album.genres) {
+            if (g !== "Music" && !allGenres.includes(g)) allGenres.push(g);
+          }
+        }
+        result.genres = allGenres.slice(0, 4);
+      }
+      // Use Apple bio if we don't have a good one
+      if ((!result.bio || result.bio.length < 50) && am.bio) {
+        result.bio = am.bio;
+      }
+      // Add Apple Music artwork to images
+      if (am.artworkUrl) {
+        result.images.push(am.artworkUrl);
+      }
+      // Set Apple Music link
+      if (am.url) {
+        result.musicLinks.appleMusic = am.url;
+      }
+    }
+  } catch (err) {
+    console.error("Apple Music enrichment failed:", err);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const { url } = await request.json();
   if (!url) {
@@ -106,6 +202,9 @@ export async function POST(request: NextRequest) {
     socialLinks: {},
     scrapeAvailable: false,
     igFollowerCount: null,
+    tiktokFollowerCount: null,
+    spotifyMonthlyListeners: null,
+    appleMusic: null,
   };
 
   // Direct Spotify URL - fastest path
@@ -143,6 +242,7 @@ export async function POST(request: NextRequest) {
         result.scrapeAvailable = true;
       }
     }
+    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
     return Response.json(result);
   }
 
@@ -232,6 +332,7 @@ export async function POST(request: NextRequest) {
         result.scrapeAvailable = false;
       }
     }
+    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
     return Response.json(result);
   }
 
@@ -324,6 +425,7 @@ export async function POST(request: NextRequest) {
         result.scrapeAvailable = false;
       }
     }
+    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
     return Response.json(result);
   }
 
@@ -371,6 +473,7 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
     return Response.json(result);
   }
 

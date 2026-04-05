@@ -8,13 +8,6 @@ export interface Palette {
 
 export const PALETTES: Palette[] = [
   {
-    id: "omt-blue",
-    name: "OMT Blue",
-    primary: "#1a1a1a",
-    secondary: "#049BD8",
-    accent: "#7c3aed",
-  },
-  {
     id: "neon-noir",
     name: "Neon Noir",
     primary: "#0a0a0a",

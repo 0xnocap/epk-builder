@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import Link from "next/link";
 import { useEPK } from "@/context/EPKContext";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { SignInGate } from "@/components/SignInGate";
+import { EPKEditor } from "@/components/EPKEditor";
 
 function getSpotifyEmbedUrl(url: string): string | null {
   const match = url.match(/spotify\.com\/(artist|album|track|playlist)\/([a-zA-Z0-9]+)/);
@@ -52,9 +51,9 @@ type ThemeMode = "dark" | "light";
 export default function PreviewPage() {
   const { data } = useEPK();
   const { data: session } = useSession();
-  const router = useRouter();
   const [theme, setTheme] = useState<ThemeMode>("dark");
   const [showGate, setShowGate] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
@@ -135,23 +134,24 @@ export default function PreviewPage() {
     >
       {/* Floating toolbar */}
       <motion.div
-        className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-8"
+        className="fixed top-4 left-0 right-0 z-30 flex items-center justify-between px-4 md:px-8"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.4 }}
+        style={{ marginLeft: editorOpen ? "400px" : 0, transition: "margin 0.3s ease" }}
       >
-        <Link
-          href="/epk"
+        <button
+          onClick={() => setEditorOpen(!editorOpen)}
           className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
           style={{
-            background: "rgba(0,0,0,0.65)",
+            background: editorOpen ? "#049BD8" : "rgba(0,0,0,0.65)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.7)",
+            border: editorOpen ? "none" : "1px solid rgba(255,255,255,0.1)",
+            color: editorOpen ? "#fff" : "rgba(255,255,255,0.7)",
           }}
         >
-          Edit
-        </Link>
+          {editorOpen ? "Close" : "Edit"}
+        </button>
 
         <div
           className="flex items-center gap-1 p-1 rounded-xl"
@@ -194,6 +194,12 @@ export default function PreviewPage() {
         </button>
       </motion.div>
 
+      {/* Editor sidebar */}
+      <EPKEditor isOpen={editorOpen} onClose={() => setEditorOpen(false)} onSave={() => setEditorOpen(false)} />
+
+      {/* Main content - shifts when editor is open */}
+      <div style={{ marginLeft: editorOpen ? "400px" : 0, transition: "margin 0.3s ease" }}>
+
       {/* Hero - Template Aware */}
       {template === "bold" && (
         <section ref={heroRef} className="relative h-screen overflow-hidden flex items-end">
@@ -217,11 +223,7 @@ export default function PreviewPage() {
               </div>
             </motion.div>
           </motion.div>
-          <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2" animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.6 }}>
-            <div className="w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1.5" style={{ borderColor: "rgba(255,255,255,0.18)" }}>
-              <div className="w-1 h-2 rounded-full" style={{ background: secondary }} />
-            </div>
-          </motion.div>
+          {/* Scroll cue removed - stats bar directly follows hero */}
         </section>
       )}
 
@@ -278,54 +280,116 @@ export default function PreviewPage() {
         </section>
       )}
 
-      {/* Stats Bar */}
-      {(data.igFollowerCount || data.genres?.length > 0 || genre) && (
-        <section className="py-8 px-8 md:px-16" style={{ borderBottom: `1px solid ${t.border}` }}>
-          <div className="max-w-5xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-wrap items-center justify-center gap-6 md:gap-10"
-            >
-              {data.igFollowerCount && (
-                <div className="text-center">
-                  <div className="font-display font-bold text-2xl md:text-3xl" style={{ color: t.text }}>
-                    {formatNumber(data.igFollowerCount)}
+      {/* Stats + Platforms Section */}
+      <section className="py-10 px-8 md:px-16" style={{ background: t.surface, borderBottom: `1px solid ${t.border}` }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col gap-8"
+          >
+            {/* Big stat numbers */}
+            {(data.spotifyMonthlyListeners || data.igFollowerCount || data.tiktokFollowerCount) && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {data.spotifyMonthlyListeners && (
+                  <a href={data.musicLinks?.spotify || "#"} target="_blank" rel="noopener noreferrer"
+                    className="p-5 rounded-2xl text-center transition-all hover:scale-[1.02]"
+                    style={{ background: t.glass, border: `1px solid ${t.border}`, textDecoration: "none", color: "inherit" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#1db954" className="mx-auto mb-2">
+                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02z"/>
+                    </svg>
+                    <div className="font-display font-bold text-2xl">{formatNumber(data.spotifyMonthlyListeners)}</div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>Monthly Listeners</div>
+                  </a>
+                )}
+                {data.igFollowerCount && (
+                  <a href={data.socialLinks?.instagram || "#"} target="_blank" rel="noopener noreferrer"
+                    className="p-5 rounded-2xl text-center transition-all hover:scale-[1.02]"
+                    style={{ background: t.glass, border: `1px solid ${t.border}`, textDecoration: "none", color: "inherit" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill={t.muted} className="mx-auto mb-2">
+                      <path d={SOCIAL_ICONS.instagram} />
+                    </svg>
+                    <div className="font-display font-bold text-2xl">{formatNumber(data.igFollowerCount)}</div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>Followers</div>
+                  </a>
+                )}
+                {data.tiktokFollowerCount && (
+                  <a href={data.socialLinks?.tiktok || "#"} target="_blank" rel="noopener noreferrer"
+                    className="p-5 rounded-2xl text-center transition-all hover:scale-[1.02]"
+                    style={{ background: t.glass, border: `1px solid ${t.border}`, textDecoration: "none", color: "inherit" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill={t.muted} className="mx-auto mb-2">
+                      <path d={SOCIAL_ICONS.tiktok} />
+                    </svg>
+                    <div className="font-display font-bold text-2xl">{formatNumber(data.tiktokFollowerCount)}</div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>Followers</div>
+                  </a>
+                )}
+                {(data.genres?.length > 0 || genre) && (
+                  <div className="p-5 rounded-2xl flex flex-col items-center justify-center gap-2"
+                    style={{ background: t.glass, border: `1px solid ${t.border}` }}>
+                    <div className="text-[10px] font-bold tracking-widest uppercase" style={{ color: t.muted }}>Genre</div>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {(data.genres?.length > 0 ? data.genres : [genre]).filter(Boolean).map((g, i) => (
+                        <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full"
+                          style={{ background: `${secondary}15`, color: secondary, border: `1px solid ${secondary}25` }}>
+                          {g}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>
-                    Instagram
-                  </div>
-                </div>
+                )}
+              </div>
+            )}
+
+            {/* Platform links row */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {Object.entries(data.socialLinks || {}).map(([platform, url]) => {
+                if (!url || !SOCIAL_ICONS[platform]) return null;
+                return (
+                  <motion.a key={platform} href={url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                    style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                    whileHover={{ borderColor: `${secondary}40`, color: t.text, scale: 1.03 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={SOCIAL_ICONS[platform]} /></svg>
+                    {SOCIAL_LABELS[platform] || platform}
+                  </motion.a>
+                );
+              })}
+              {data.musicLinks?.spotify && (
+                <motion.a href={data.musicLinks.spotify} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                  whileHover={{ borderColor: "#1db95440", color: "#1db954", scale: 1.03 }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02z"/></svg>
+                  Spotify
+                </motion.a>
               )}
-              {data.topTracks?.length > 0 && (
-                <div className="text-center">
-                  <div className="font-display font-bold text-2xl md:text-3xl" style={{ color: t.text }}>
-                    {data.topTracks.length}
-                  </div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: t.muted }}>
-                    Top Tracks
-                  </div>
-                </div>
+              {data.musicLinks?.appleMusic && (
+                <motion.a href={data.musicLinks.appleMusic} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                  whileHover={{ borderColor: "#fc3c4440", color: "#fc3c44", scale: 1.03 }}
+                >
+                  Apple Music
+                </motion.a>
               )}
-              {(data.genres?.length > 0 || genre) && (
-                <div className="flex flex-wrap gap-2">
-                  {(data.genres?.length > 0 ? data.genres : [genre]).filter(Boolean).map((g, i) => (
-                    <span
-                      key={i}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                      style={{ background: `${secondary}12`, color: secondary, border: `1px solid ${secondary}20` }}
-                    >
-                      {g}
-                    </span>
-                  ))}
-                </div>
+              {data.musicLinks?.youtubeMusic && (
+                <motion.a href={data.musicLinks.youtubeMusic} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                  whileHover={{ borderColor: "#ff000040", color: "#ff0000", scale: 1.03 }}
+                >
+                  YouTube
+                </motion.a>
               )}
-            </motion.div>
-          </div>
-        </section>
-      )}
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* About */}
       <section className="py-24 px-8 md:px-16 max-w-5xl mx-auto">
@@ -341,6 +405,12 @@ export default function PreviewPage() {
               {bio}
             </p>
             <div className="flex flex-col gap-5">
+              {(data.genres?.length > 0 || genre) && (
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Genre</div>
+                  <div className="font-semibold text-sm">{(data.genres?.length > 0 ? data.genres : [genre]).filter(Boolean).join(", ")}</div>
+                </div>
+              )}
               {location && (
                 <div>
                   <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Based In</div>
@@ -349,8 +419,8 @@ export default function PreviewPage() {
               )}
               {data.igFollowerCount && (
                 <div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Instagram</div>
-                  <div className="font-semibold text-sm">{formatNumber(data.igFollowerCount)} followers</div>
+                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Followers</div>
+                  <div className="font-semibold text-sm">{formatNumber(data.igFollowerCount)} on Instagram</div>
                 </div>
               )}
             </div>
@@ -382,28 +452,28 @@ export default function PreviewPage() {
                 )}
               </div>
 
-              {/* Top Tracks */}
-              {data.topTracks?.length > 0 && (
+              {/* Top Songs - from Apple Music or Spotify */}
+              {(data.appleMusicTopSongs?.length > 0 || data.topTracks?.length > 0) && (
                 <div className="mt-8">
-                  <div className="text-[10px] font-bold tracking-widest uppercase mb-4" style={{ color: t.muted }}>Top Tracks</div>
+                  <div className="text-[10px] font-bold tracking-widest uppercase mb-4" style={{ color: t.muted }}>Top Songs</div>
                   <div className="flex flex-col gap-2">
-                    {data.topTracks.slice(0, 5).map((track, i) => (
+                    {(data.appleMusicTopSongs?.length > 0 ? data.appleMusicTopSongs : data.topTracks).slice(0, 5).map((track: any, i: number) => (
                       <motion.a
                         key={i}
-                        href={track.spotifyUrl}
+                        href={track.url || track.spotifyUrl || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-4 p-3 rounded-xl transition-all"
                         style={{ background: t.glass, border: `1px solid ${t.border}`, textDecoration: "none", color: "inherit" }}
                         whileHover={{ borderColor: `${secondary}30`, background: `${secondary}06`, scale: 1.01 }}
                       >
-                        {track.albumArt && (
+                        {(track.artworkUrl || track.albumArt) && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={track.albumArt} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          <img src={track.artworkUrl || track.albumArt} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-sm truncate">{track.name}</div>
-                          <div className="text-xs truncate" style={{ color: t.muted }}>{track.album}</div>
+                          <div className="text-xs truncate" style={{ color: t.muted }}>{track.albumName || track.album}</div>
                         </div>
                         <span className="text-xs shrink-0" style={{ color: t.muted }}>{i + 1}</span>
                       </motion.a>
@@ -412,35 +482,7 @@ export default function PreviewPage() {
                 </div>
               )}
 
-              {/* Streaming platform links */}
-              {data.musicLinks && Object.values(data.musicLinks).some(Boolean) && (
-                <div className="mt-8 flex flex-wrap gap-3">
-                  {data.musicLinks.spotify && (
-                    <a href={data.musicLinks.spotify} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{ background: t.glass, border: `1px solid ${t.border}`, color: t.text }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#1db954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                      Spotify
-                    </a>
-                  )}
-                  {data.musicLinks.appleMusic && (
-                    <a href={data.musicLinks.appleMusic} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{ background: t.glass, border: `1px solid ${t.border}`, color: t.text }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fc3c44"><path d="M23.994 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 0 0-1.877-.726 10.496 10.496 0 0 0-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208A6.38 6.38 0 0 0 .08 5.136C.028 5.638 0 6.14 0 6.642v10.724c0 .502.028 1.004.08 1.506.065.645.182 1.28.477 1.857.7 1.378 1.828 2.261 3.31 2.632.556.14 1.124.2 1.696.218.278.008.556.013.835.013h10.763c.278 0 .556-.005.835-.013.572-.018 1.14-.078 1.696-.218 1.482-.371 2.61-1.254 3.31-2.632.295-.577.412-1.212.477-1.857.052-.502.08-1.004.08-1.506V6.642c0-.502-.028-1.004-.08-1.506l.001-.012z"/></svg>
-                      Apple Music
-                    </a>
-                  )}
-                  {data.musicLinks.soundcloud && (
-                    <a href={data.musicLinks.soundcloud} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{ background: t.glass, border: `1px solid ${t.border}`, color: t.text }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff5500"><path d="M1.175 12.225C.527 12.225 0 12.75 0 13.4v.6c0 .65.527 1.175 1.175 1.175.65 0 1.176-.525 1.176-1.175v-.6c0-.65-.527-1.175-1.176-1.175z"/></svg>
-                      SoundCloud
-                    </a>
-                  )}
-                  {data.musicLinks.youtubeMusic && (
-                    <a href={data.musicLinks.youtubeMusic} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{ background: t.glass, border: `1px solid ${t.border}`, color: t.text }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                      YouTube
-                    </a>
-                  )}
-                </div>
-              )}
+              {/* (Streaming links are in the platforms bar above) */}
             </motion.div>
           </div>
         </section>
@@ -629,68 +671,33 @@ export default function PreviewPage() {
         </section>
       )}
 
-      {/* Social Links */}
-      {data.socialLinks && Object.keys(data.socialLinks).length > 0 && (
-        <section className="py-16 px-8 md:px-16">
-          <div className="max-w-5xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <SectionLabel label="Connect" color={secondary} />
-              <div className="mt-8 flex flex-wrap gap-3">
-                {Object.entries(data.socialLinks).map(([platform, url]) => {
-                  if (!url) return null;
-                  const icon = SOCIAL_ICONS[platform];
-                  const label = SOCIAL_LABELS[platform] || platform;
-                  return (
-                    <motion.a
-                      key={platform}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all"
-                      style={{
-                        background: t.glass,
-                        border: `1px solid ${t.border}`,
-                        color: t.text,
-                        textDecoration: "none",
-                      }}
-                      whileHover={{
-                        borderColor: `${secondary}30`,
-                        background: `${secondary}08`,
-                        scale: 1.03,
-                      }}
-                    >
-                      {icon && (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.7 }}>
-                          <path d={icon} />
-                        </svg>
-                      )}
-                      {label}
-                    </motion.a>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        </section>
-      )}
+      {/* (Social links are in the platforms bar under the hero) */}
 
-      {/* Footer */}
-      <footer
-        className="py-10 px-8 text-center"
-        style={{ borderTop: `1px solid ${t.border}` }}
-      >
-        <div className="text-sm font-semibold" style={{ color: secondary }}>
-          {artistName}
-        </div>
-        <div className="text-xs mt-1" style={{ color: t.muted }}>
-          Electronic Press Kit
+      {/* Footer with platform links */}
+      <footer className="py-12 px-8" style={{ borderTop: `1px solid ${t.border}` }}>
+        <div className="max-w-5xl mx-auto flex flex-col items-center gap-5">
+          <div className="text-sm font-display font-bold" style={{ color: secondary }}>
+            {artistName}
+          </div>
+          {/* Repeat platform links in footer */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {Object.entries({ ...data.socialLinks, ...(data.musicLinks || {}) }).map(([key, url]) => {
+              if (!url) return null;
+              const icon = SOCIAL_ICONS[key];
+              return icon ? (
+                <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="transition-all hover:opacity-70">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={t.muted}><path d={icon} /></svg>
+                </a>
+              ) : null;
+            })}
+          </div>
+          <div className="text-[10px] uppercase tracking-widest" style={{ color: t.muted }}>
+            Electronic Press Kit
+          </div>
         </div>
       </footer>
+
+      </div>{/* end content shift wrapper */}
 
       {/* Sign-in gate */}
       <SignInGate isOpen={showGate} onClose={() => setShowGate(false)} />

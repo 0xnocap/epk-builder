@@ -78,6 +78,12 @@ function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return n.toString();
+}
+
 // ─── Thinking dots ───────────────────────────────────────────────────────────
 
 function ThinkingDots() {
@@ -202,11 +208,84 @@ function BuildPageInner() {
           topTracks: d.spotify?.topTracks || [],
           socialLinks: d.socialLinks || {},
           igFollowerCount: d.igFollowerCount || null,
+          tiktokFollowerCount: d.tiktokFollowerCount || null,
+          spotifyMonthlyListeners: d.spotifyMonthlyListeners || null,
           genres: d.genres || [],
+          appleMusicBio: d.appleMusic?.bio || "",
+          appleMusicTopSongs: d.appleMusic?.topSongs || [],
+          appleMusicUrl: d.appleMusic?.url || "",
           autoData: d.artistName
             ? { artistName: d.artistName, bio: d.bio || "", images: d.images || [], genres: d.genres || [] }
             : null,
         });
+
+        // Use Apple Music bio if available and IG bio is short
+        if (d.appleMusic?.bio && (!d.bio || d.bio.length < 50)) {
+          updateData({ bio: d.appleMusic.bio });
+        }
+
+        // AI enrichment - only if we still need bio or genre after Apple Music
+        const currentBio = d.appleMusic?.bio || d.bio || "";
+        const needsBio = currentBio.length < 50;
+        const needsGenre = !d.genres || d.genres.length === 0;
+
+        if (needsBio || needsGenre) {
+          setLoadingText("Writing your story");
+          await delay(400);
+
+          try {
+            const genRes = await fetch("/api/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "bio",
+                context: {
+                  artistName: d.artistName,
+                  genre: d.genres?.[0] || "",
+                  location: "",
+                  additionalInfo: d.bio ? `Their social bio says: "${d.bio}". Instagram followers: ${d.igFollowerCount ? formatNumber(d.igFollowerCount) : "unknown"}. ${d.spotify?.found ? "They are on Spotify." : ""} Write a compelling 3-4 sentence professional EPK bio.` : "",
+                },
+              }),
+            });
+            const genData = await genRes.json();
+            if (genData.text && needsBio) {
+              updateData({ bio: genData.text });
+              setRevealedName(d.artistName); // refresh card
+            }
+          } catch {
+            // AI failed, keep whatever bio we have
+          }
+
+          if (needsGenre && d.artistName) {
+            try {
+              const genreRes = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "bio",
+                  context: {
+                    artistName: d.artistName,
+                    genre: "",
+                    location: "",
+                    additionalInfo: `What genre(s) is ${d.artistName}? Reply with ONLY 1-3 genre tags separated by commas, nothing else. Example: "pop soul, R&B, indie pop"`,
+                  },
+                }),
+              });
+              const genreData = await genreRes.json();
+              if (genreData.text) {
+                const inferredGenres = genreData.text.split(",").map((g: string) => g.trim()).filter(Boolean).slice(0, 3);
+                if (inferredGenres.length > 0) {
+                  updateData({ genres: inferredGenres, genre: inferredGenres[0] });
+                  setRevealedGenre(inferredGenres.join(" / "));
+                }
+              }
+            } catch {
+              // AI failed, no genres
+            }
+          }
+
+          await delay(500);
+        }
 
         // Show "ready" state - user decides when to continue
         setLoadingText("All set");
