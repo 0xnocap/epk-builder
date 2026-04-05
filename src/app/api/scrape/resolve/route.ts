@@ -100,20 +100,33 @@ async function scrapeTikTok(username: string, baseUrl: string) {
 async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): Promise<void> {
   const tasks: Promise<void>[] = [];
 
-  // TikTok followers
+  // TikTok followers - try from socialLinks or guess from artist/IG username
+  let tiktokUsername: string | null = null;
   const tiktokUrl = result.socialLinks?.tiktok;
   if (tiktokUrl) {
     const ttMatch = tiktokUrl.match(/tiktok\.com\/@([a-zA-Z0-9._]+)/);
-    if (ttMatch) {
-      tasks.push(
-        fetch(`${baseUrl}/api/scrape/tiktok?username=${encodeURIComponent(ttMatch[1])}`)
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.followerCount) result.tiktokFollowerCount = d.followerCount;
-          })
-          .catch(() => {})
-      );
-    }
+    if (ttMatch) tiktokUsername = ttMatch[1];
+  }
+  // If no TikTok URL found, try the IG username variants
+  if (!tiktokUsername && result.source === "instagram") {
+    const igUrl = result.socialLinks?.instagram || "";
+    const igMatch = igUrl.match(/instagram\.com\/([a-zA-Z0-9._]+)/);
+    if (igMatch) tiktokUsername = igMatch[1];
+  }
+  if (tiktokUsername) {
+    tasks.push(
+      fetch(`${baseUrl}/api/scrape/tiktok?username=${encodeURIComponent(tiktokUsername)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.followerCount) {
+            result.tiktokFollowerCount = d.followerCount;
+            if (!result.socialLinks.tiktok) {
+              result.socialLinks.tiktok = `https://www.tiktok.com/@${tiktokUsername}`;
+            }
+          }
+        })
+        .catch(() => {})
+    );
   }
 
   // Spotify monthly listeners - scrape directly from public page (no API needed)
@@ -339,11 +352,39 @@ export async function POST(request: NextRequest) {
           }
         }
       } else {
+        // IG scraper failed (blocked IP) - use other sources
         result.artistName = username;
         result.scrapeAvailable = false;
+
+        // Try common link-in-bio URLs to find music/social links
+        const bioLinkAttempts = [
+          `https://linktr.ee/${username}`,
+          `https://${username}.lnk.to/all`,
+        ];
+        for (const bioUrl of bioLinkAttempts) {
+          try {
+            const linkData = await scrapeLinktree(bioUrl, baseUrl);
+            if (linkData?.links?.length > 0) {
+              const musicLinksFound = findMusicLinks(linkData.links);
+              const socialLinksFound = findSocialLinks(linkData.links);
+              result.musicLinks = { ...result.musicLinks, ...musicLinksFound };
+              result.socialLinks = { ...result.socialLinks, ...socialLinksFound };
+              const spotifyUrl = findSpotifyFromLinks(linkData.links);
+              if (spotifyUrl) result.musicLinks.spotify = spotifyUrl;
+              break;
+            }
+          } catch { /* try next */ }
+        }
       }
     }
+
     await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
+
+    // Ensure Apple Music link is set
+    if (result.appleMusic?.found && result.appleMusic.url && !result.musicLinks.appleMusic) {
+      result.musicLinks.appleMusic = result.appleMusic.url;
+    }
+
     return Response.json(result);
   }
 
