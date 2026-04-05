@@ -1,0 +1,22 @@
+{
+  "functions": {
+    "src/app/api/scrape/resolve/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/scrape/instagram/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/scrape/tiktok/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/spotify/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/apple-music/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/proxy-image/route.ts": {
+      "maxDuration": 15
+    }
+  }
+}

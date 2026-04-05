@@ -402,7 +402,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
+    // First enrich with Apple Music to get the real artist name
+    await enrichWithAppleMusic(result);
+
+    // After Apple Music gives us the real name, try bio link scrape with name-based URLs
+    if (result.artistName && Object.keys(result.musicLinks).length <= 1) {
+      const nameSlug = result.artistName.toLowerCase().replace(/\s+/g, "");
+      const nameSlugDash = result.artistName.toLowerCase().replace(/\s+/g, "-");
+      const nameAttempts = [
+        `https://${nameSlug}.lnk.to/all`,
+        `https://linktr.ee/${nameSlug}`,
+        `https://${nameSlugDash}.lnk.to/all`,
+      ];
+      for (const bioUrl of nameAttempts) {
+        try {
+          const linkData = await scrapeLinktree(bioUrl, baseUrl);
+          if (linkData?.links?.length > 0) {
+            const musicLinksFound = findMusicLinks(linkData.links);
+            const socialLinksFound = findSocialLinks(linkData.links);
+            result.musicLinks = { ...result.musicLinks, ...musicLinksFound };
+            result.socialLinks = { ...result.socialLinks, ...socialLinksFound };
+            const spotifyUrl = findSpotifyFromLinks(linkData.links);
+            if (spotifyUrl) result.musicLinks.spotify = spotifyUrl;
+            break;
+          }
+        } catch { /* try next */ }
+      }
+    }
+
+    // Now enrich with platform stats (needs socialLinks/musicLinks populated first)
+    await enrichWithPlatformStats(result, baseUrl);
 
     // Ensure Apple Music link is set
     if (result.appleMusic?.found && result.appleMusic.url && !result.musicLinks.appleMusic) {
