@@ -151,17 +151,21 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
     const spMatch = spotifyUrl.match(/artist\/([a-zA-Z0-9]+)/);
     if (spMatch) {
       tasks.push(
-        fetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
-        })
+        proxyFetch(`https://open.spotify.com/artist/${spMatch[1]}`, { render: true })
           .then((r) => r.text())
           .then((html) => {
-            const mlMatch = html.match(/content="[^"]*?([\d,.]+[MKB]?) monthly listeners/i);
-            if (mlMatch) {
-              const raw = mlMatch[1].replace(/,/g, "");
+            // Try rendered page text format: "61,903,926 monthly listener"
+            const fullMatch = html.match(/([\d,]+)\s*monthly listener/i);
+            if (fullMatch) {
+              result.spotifyMonthlyListeners = parseInt(fullMatch[1].replace(/,/g, ""));
+              return;
+            }
+            // Fallback: meta tag format "61.9M monthly listeners"
+            const metaMatch = html.match(/content="[^"]*?([\d,.]+[MKB]?) monthly listeners/i);
+            if (metaMatch) {
+              const raw = metaMatch[1].replace(/,/g, "");
               if (raw.endsWith("M")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000_000);
               else if (raw.endsWith("K")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000);
-              else if (raw.endsWith("B")) result.spotifyMonthlyListeners = Math.round(parseFloat(raw) * 1_000_000_000);
               else result.spotifyMonthlyListeners = parseInt(raw);
             }
           })
