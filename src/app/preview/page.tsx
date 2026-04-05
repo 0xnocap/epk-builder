@@ -342,88 +342,88 @@ export default function PreviewPage() {
               </div>
             )}
 
-            {/* Platform links row */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {Object.entries(data.socialLinks || {}).map(([platform, url]) => {
-                if (!url || !SOCIAL_ICONS[platform]) return null;
-                return (
-                  <motion.a key={platform} href={url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
-                    style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
-                    whileHover={{ borderColor: `${secondary}40`, color: t.text, scale: 1.03 }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={SOCIAL_ICONS[platform]} /></svg>
-                    {SOCIAL_LABELS[platform] || platform}
-                  </motion.a>
-                );
-              })}
-              {data.musicLinks?.spotify && (
-                <motion.a href={data.musicLinks.spotify} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
-                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
-                  whileHover={{ borderColor: "#1db95440", color: "#1db954", scale: 1.03 }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                  Spotify
-                </motion.a>
-              )}
-              {data.musicLinks?.appleMusic && (
-                <motion.a href={data.musicLinks.appleMusic} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
-                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
-                  whileHover={{ borderColor: "#fc3c4440", color: "#fc3c44", scale: 1.03 }}
-                >
-                  Apple Music
-                </motion.a>
-              )}
-              {data.musicLinks?.youtubeMusic && (
-                <motion.a href={data.musicLinks.youtubeMusic} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
-                  style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
-                  whileHover={{ borderColor: "#ff000040", color: "#ff0000", scale: 1.03 }}
-                >
-                  YouTube
-                </motion.a>
-              )}
-            </div>
+            {/* Additional platform links (only ones NOT already shown as stat cards) */}
+            {(() => {
+              const shownInCards = new Set<string>();
+              if (data.spotifyMonthlyListeners) shownInCards.add("spotify");
+              if (data.igFollowerCount) shownInCards.add("instagram");
+              if (data.tiktokFollowerCount) shownInCards.add("tiktok");
+
+              const extraSocials = Object.entries(data.socialLinks || {}).filter(([p, url]) => url && SOCIAL_ICONS[p] && !shownInCards.has(p));
+              const extraMusic = [
+                !shownInCards.has("spotify") && data.musicLinks?.spotify ? { key: "spotify", url: data.musicLinks.spotify, label: "Spotify", color: "#1db954" } : null,
+                data.musicLinks?.appleMusic ? { key: "appleMusic", url: data.musicLinks.appleMusic, label: "Apple Music", color: "#fc3c44" } : null,
+                data.musicLinks?.youtubeMusic ? { key: "youtube", url: data.musicLinks.youtubeMusic, label: "YouTube", color: "#ff0000" } : null,
+              ].filter(Boolean);
+
+              if (extraSocials.length === 0 && extraMusic.length === 0) return null;
+
+              return (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {extraSocials.map(([platform, url]) => (
+                    <motion.a key={platform} href={url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                      style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                      whileHover={{ borderColor: `${secondary}40`, color: t.text, scale: 1.03 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={SOCIAL_ICONS[platform]} /></svg>
+                      {SOCIAL_LABELS[platform] || platform}
+                    </motion.a>
+                  ))}
+                  {extraMusic.map((item: any) => (
+                    <motion.a key={item.key} href={item.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all"
+                      style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.muted, textDecoration: "none" }}
+                      whileHover={{ borderColor: `${item.color}40`, color: item.color, scale: 1.03 }}
+                    >
+                      {item.label}
+                    </motion.a>
+                  ))}
+                </div>
+              );
+            })()}
           </motion.div>
         </div>
       </section>
 
       {/* About */}
-      <section className="py-24 px-8 md:px-16 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-        >
-          <SectionLabel label="About" color={secondary} />
-          <div className="mt-10 grid md:grid-cols-[2fr_1fr] gap-12">
-            <p className="text-lg leading-loose" style={{ color: t.muted }}>
-              {bio}
-            </p>
-            <div className="flex flex-col gap-5">
-              {(data.genres?.length > 0 || genre) && (
-                <div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Genre</div>
-                  <div className="font-semibold text-sm">{(data.genres?.length > 0 ? data.genres : [genre]).filter(Boolean).join(", ")}</div>
-                </div>
-              )}
-              {location && (
-                <div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Based In</div>
-                  <div className="font-semibold text-sm">{location}</div>
-                </div>
-              )}
-              {data.igFollowerCount && (
-                <div>
-                  <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Followers</div>
-                  <div className="font-semibold text-sm">{formatNumber(data.igFollowerCount)} on Instagram</div>
-                </div>
-              )}
+      <section className="py-16 px-8 md:px-16">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+          >
+            <SectionLabel label="About" color={secondary} />
+            <div className="mt-10 grid grid-cols-1 md:grid-cols-[1fr_280px] gap-8 md:gap-16">
+              <p className="text-base leading-relaxed" style={{ color: t.muted }} dangerouslySetInnerHTML={{ __html: bio.replace(/<(?!\/?(i|em|b|strong)\b)[^>]*>/gi, '') }} />
+              <div className="flex flex-col gap-5 md:text-right md:items-end">
+                {(data.genres?.length > 0 || genre) && (
+                  <div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Genre</div>
+                    <div className="font-semibold text-sm">{(data.genres?.length > 0 ? data.genres : [genre]).filter(Boolean).join(", ")}</div>
+                  </div>
+                )}
+                {location && (
+                  <div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Based In</div>
+                    <div className="font-semibold text-sm">{location}</div>
+                  </div>
+                )}
+                {(data.igFollowerCount || data.tiktokFollowerCount || data.spotifyMonthlyListeners) && (
+                  <div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: t.muted }}>Reach</div>
+                    <div className="flex flex-col gap-1">
+                      {data.spotifyMonthlyListeners && <div className="font-semibold text-sm">{formatNumber(data.spotifyMonthlyListeners)} Spotify listeners</div>}
+                      {data.igFollowerCount && <div className="font-semibold text-sm">{formatNumber(data.igFollowerCount)} Instagram followers</div>}
+                      {data.tiktokFollowerCount && <div className="font-semibold text-sm">{formatNumber(data.tiktokFollowerCount)} TikTok followers</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       {/* Music - Combined: Embed + Top Tracks + Streaming Links */}
