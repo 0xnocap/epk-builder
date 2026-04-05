@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { proxyFetch } from "@/lib/proxy-fetch";
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await proxyFetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15",

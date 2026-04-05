@@ -443,7 +443,7 @@ function BuildPageInner() {
         )}
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-8">
+      <div className="flex-1 flex items-center justify-center px-6 pb-16" style={{ marginTop: "-2rem" }}>
         <div className="w-full max-w-xl">
 
           {/* ─── Loading phase ─────────────────────────────────────────── */}

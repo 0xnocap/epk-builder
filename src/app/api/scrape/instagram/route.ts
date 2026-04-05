@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { proxyFetch } from "@/lib/proxy-fetch";
 
 const IG_APP_ID = "936619743392459";
 const IG_USER_AGENT =
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Instagram's undocumented web profile API
-    const res = await fetch(
+    // Instagram's undocumented web profile API - routed through proxy in production
+    const res = await proxyFetch(
       `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUsername)}`,
       {
         headers: {

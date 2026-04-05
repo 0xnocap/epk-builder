@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { proxyFetch } from "@/lib/proxy-fetch";
 
 const TT_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(`https://www.tiktok.com/@${clean}`, {
+    const res = await proxyFetch(`https://www.tiktok.com/@${clean}`, {
       headers: { "User-Agent": TT_USER_AGENT },
     });
 

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { proxyFetch } from "@/lib/proxy-fetch";
 import {
   classifyUrl,
   extractInstagramUsername,
@@ -121,7 +122,7 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
     const spMatch = spotifyUrl.match(/artist\/([a-zA-Z0-9]+)/);
     if (spMatch) {
       tasks.push(
-        fetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
+        proxyFetch(`https://open.spotify.com/artist/${spMatch[1]}`, {
           headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
         })
           .then((r) => r.text())
