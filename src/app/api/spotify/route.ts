@@ -20,14 +20,45 @@ async function getSpotifyToken(): Promise<string> {
 }
 
 export async function GET(req: NextRequest) {
-  const artistId = req.nextUrl.searchParams.get("artistId");
-  if (!artistId) {
-    return NextResponse.json({ error: "artistId required" }, { status: 400 });
+  let artistId = req.nextUrl.searchParams.get("artistId");
+  const searchName = req.nextUrl.searchParams.get("name");
+
+  if (!artistId && !searchName) {
+    return NextResponse.json({ error: "artistId or name required" }, { status: 400 });
   }
 
   try {
     const token = await getSpotifyToken();
     const headers = { Authorization: `Bearer ${token}` };
+
+    // If no artistId, search by name first
+    if (!artistId && searchName) {
+      const searchRes = await fetch(
+        `https://api.spotify.com/v1/search?type=artist&q=${encodeURIComponent(searchName)}&limit=5`,
+        { headers }
+      );
+      if (!searchRes.ok) {
+        return NextResponse.json({ error: "Spotify search failed" }, { status: searchRes.status });
+      }
+      const searchData = await searchRes.json();
+      const artists = searchData?.artists?.items || [];
+      if (artists.length === 0) {
+        return NextResponse.json({ error: "No artist found", searched: true }, { status: 404 });
+      }
+      // Find best match - prefer exact name match (case-insensitive), fall back to first result
+      const nameLower = searchName.toLowerCase();
+      const exactMatch = artists.find((a: any) => a.name.toLowerCase() === nameLower);
+      const bestMatch = exactMatch || artists[0];
+      // If no exact match, check the top result is reasonably close
+      if (!exactMatch) {
+        const topName = bestMatch.name.toLowerCase();
+        // Reject if the names are too different (simple check: one must contain the other)
+        if (!topName.includes(nameLower) && !nameLower.includes(topName)) {
+          return NextResponse.json({ error: "No matching artist found", searched: true }, { status: 404 });
+        }
+      }
+      artistId = bestMatch.id;
+    }
 
     // Fetch artist data
     const artistRes = await fetch(

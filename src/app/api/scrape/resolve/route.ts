@@ -177,6 +177,61 @@ async function enrichWithPlatformStats(result: ResolveResult, baseUrl: string): 
   await Promise.all(tasks);
 }
 
+async function searchSpotifyByName(artistName: string, baseUrl: string): Promise<any | null> {
+  try {
+    const res = await fetch(`${baseUrl}/api/spotify?name=${encodeURIComponent(artistName)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function enrichWithSpotify(result: ResolveResult, baseUrl: string): Promise<void> {
+  // Skip if we already have Spotify data
+  if (result.spotify?.found || result.musicLinks.spotify) return;
+  if (!result.artistName) return;
+
+  try {
+    const spotifyData = await searchSpotifyByName(result.artistName, baseUrl);
+    if (spotifyData?.name) {
+      const artistId = spotifyData.spotifyUrl?.match(/artist\/([a-zA-Z0-9]+)/)?.[1];
+      result.spotify = {
+        found: true,
+        artistId,
+        url: spotifyData.spotifyUrl,
+        topTracks: (spotifyData.topTracks || []).map((t: any) => ({
+          name: t.name,
+          album: t.album,
+          albumArt: t.albumArt,
+          spotifyUrl: t.spotifyUrl,
+          previewUrl: t.previewUrl,
+        })),
+        images: (spotifyData.images || []).map((img: { url: string }) => img.url),
+        followers: spotifyData.followers,
+        genres: spotifyData.genres,
+      };
+      if (spotifyData.spotifyUrl) {
+        result.musicLinks.spotify = spotifyData.spotifyUrl;
+      }
+      // Fill genres from Spotify if we don't have any
+      if ((!result.genres || result.genres.length === 0) && spotifyData.genres?.length) {
+        result.genres = spotifyData.genres;
+      }
+      // Add Spotify images if we're light on images
+      if (result.images.length < 2 && spotifyData.images?.length) {
+        result.images.push(...spotifyData.images.map((img: { url: string }) => img.url));
+      }
+      // Monthly listeners from the search result
+      if (spotifyData.monthlyListeners && !result.spotifyMonthlyListeners) {
+        result.spotifyMonthlyListeners = spotifyData.monthlyListeners;
+      }
+    }
+  } catch (err) {
+    console.error("Spotify name search failed:", err);
+  }
+}
+
 async function enrichWithAppleMusic(result: ResolveResult): Promise<void> {
   if (!result.artistName) return;
   try {
@@ -405,6 +460,9 @@ export async function POST(request: NextRequest) {
     // First enrich with Apple Music to get the real artist name
     await enrichWithAppleMusic(result);
 
+    // If no Spotify found from links, search Spotify by artist name
+    await enrichWithSpotify(result, baseUrl);
+
     // After Apple Music gives us the real name, try bio link scrape with name-based URLs
     if (result.artistName && Object.keys(result.musicLinks).length <= 1) {
       const nameSlug = result.artistName.toLowerCase().replace(/\s+/g, "");
@@ -530,7 +588,9 @@ export async function POST(request: NextRequest) {
         result.scrapeAvailable = false;
       }
     }
-    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
+    await enrichWithAppleMusic(result);
+    await enrichWithSpotify(result, baseUrl);
+    await enrichWithPlatformStats(result, baseUrl);
     return Response.json(result);
   }
 
@@ -578,7 +638,9 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    await Promise.all([enrichWithAppleMusic(result), enrichWithPlatformStats(result, baseUrl)]);
+    await enrichWithAppleMusic(result);
+    await enrichWithSpotify(result, baseUrl);
+    await enrichWithPlatformStats(result, baseUrl);
     return Response.json(result);
   }
 
