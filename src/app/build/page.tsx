@@ -142,12 +142,30 @@ function BuildPageInner() {
       // Let the initial state breathe
       await delay(800);
 
+      // Cycle through platform messages while the API works
+      const statusMessages = [
+        "Scanning Instagram",
+        "Checking Spotify",
+        "Searching Apple Music",
+        "Looking for TikTok",
+        "Pulling platform stats",
+        "Analyzing bio links",
+        "Gathering visuals",
+        "Almost there",
+      ];
+      let msgIndex = 0;
+      const statusInterval = setInterval(() => {
+        setLoadingText(statusMessages[msgIndex % statusMessages.length]);
+        msgIndex++;
+      }, 3500);
+
       try {
         const res = await fetch("/api/scrape/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
         });
+        clearInterval(statusInterval);
         const d = await res.json();
         setResolvedData(d);
 
@@ -292,6 +310,7 @@ function BuildPageInner() {
         await delay(300);
         setLoadingDone(true);
       } catch {
+        clearInterval(statusInterval);
         setLoadingText("Couldn't reach your profile");
         await delay(1000);
         setPhase("steps");
