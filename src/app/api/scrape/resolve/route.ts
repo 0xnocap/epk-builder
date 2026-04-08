@@ -40,6 +40,17 @@ interface ResolveResult {
   igFollowerCount: number | null;
   tiktokFollowerCount: number | null;
   spotifyMonthlyListeners: number | null;
+  videos: {
+    url: string;
+    videoUrl?: string;
+    thumbnailUrl?: string | null;
+    caption?: string;
+    likes?: number;
+    comments?: number;
+    views?: number;
+    date?: string;
+    musicInfo?: { song: string; artist: string } | null;
+  }[];
   appleMusic: {
     found: boolean;
     bio?: string;
@@ -303,6 +314,7 @@ export async function POST(request: NextRequest) {
     igFollowerCount: null,
     tiktokFollowerCount: null,
     spotifyMonthlyListeners: null,
+    videos: [],
     appleMusic: null,
   };
 
@@ -364,12 +376,55 @@ export async function POST(request: NextRequest) {
           ...(igData.recentPostImages || []),
         ];
 
-        // Follow bio link to find Spotify and music links
-        if (igData.externalUrl) {
+        // Store videos from parse.bot
+        if (igData.videos?.length) {
+          result.videos = igData.videos;
+        }
+
+        // Process bio links from parse.bot (already scraped in parallel)
+        if (igData.bioLinks?.length || igData.bioSocialLinks?.length) {
+          // parse.bot bio link data - extract music/social links
+          const allBioLinks = [
+            ...(igData.bioLinks || []).map((l: any) => l.url).filter(Boolean),
+            ...(igData.bioSocialLinks || []).map((l: any) => l.url).filter(Boolean),
+          ];
+          if (allBioLinks.length) {
+            const musicLinksFound = findMusicLinks(allBioLinks);
+            const socialLinksFound = findSocialLinks(allBioLinks);
+            result.musicLinks = { ...result.musicLinks, ...musicLinksFound };
+            result.socialLinks = { ...result.socialLinks, ...socialLinksFound };
+
+            const spotifyUrl = findSpotifyFromLinks(allBioLinks);
+            if (spotifyUrl) {
+              const artistId = extractSpotifyArtistId(spotifyUrl);
+              if (artistId) {
+                const spotifyData = await fetchSpotifyData(artistId, baseUrl);
+                if (spotifyData?.name) {
+                  result.genres = spotifyData.genres || [];
+                  result.musicLinks.spotify = spotifyData.spotifyUrl;
+                  result.spotify = {
+                    found: true,
+                    artistId,
+                    url: spotifyData.spotifyUrl,
+                    topTracks: (spotifyData.topTracks || []).map((t: any) => ({
+                      name: t.name, album: t.album, albumArt: t.albumArt,
+                      spotifyUrl: t.spotifyUrl, previewUrl: t.previewUrl,
+                    })),
+                    images: (spotifyData.images || []).map((img: { url: string }) => img.url),
+                    followers: spotifyData.followers,
+                    genres: spotifyData.genres,
+                  };
+                }
+              }
+            }
+          }
+        }
+
+        // Follow external bio link if parse.bot didn't give us links
+        if (igData.externalUrl && Object.keys(result.musicLinks).length === 0) {
           const bioLinkPlatform = classifyUrl(igData.externalUrl);
 
           if (bioLinkPlatform === "spotify") {
-            // Direct Spotify link in bio
             const artistId = extractSpotifyArtistId(igData.externalUrl);
             if (artistId) {
               const spotifyData = await fetchSpotifyData(artistId, baseUrl);
@@ -391,7 +446,6 @@ export async function POST(request: NextRequest) {
               }
             }
           } else {
-            // Linktree or other bio link page - scrape for music links
             const linkData = await scrapeLinktree(igData.externalUrl, baseUrl);
             if (linkData?.links?.length) {
               const musicLinksFound = findMusicLinks(linkData.links);
@@ -399,7 +453,6 @@ export async function POST(request: NextRequest) {
               result.musicLinks = { ...result.musicLinks, ...musicLinksFound };
               result.socialLinks = { ...result.socialLinks, ...socialLinksFound };
 
-              // Find and fetch Spotify
               const spotifyUrl = findSpotifyFromLinks(linkData.links);
               if (spotifyUrl) {
                 const artistId = extractSpotifyArtistId(spotifyUrl);
@@ -427,13 +480,11 @@ export async function POST(request: NextRequest) {
           }
         }
       } else {
-        // IG scraper failed (blocked IP) - use other sources
+        // IG scraper failed entirely - use other sources
         result.artistName = username;
         result.scrapeAvailable = false;
 
-        // Try common link-in-bio URLs to find music/social links
-        // Try both the IG username and common variations
-        const cleanName = username.replace(/[_.\d]+$/, ""); // "oliviadeano" -> "oliviadeano", or strip trailing _ digits
+        const cleanName = username.replace(/[_.\d]+$/, "");
         const bioLinkAttempts = [
           `https://linktr.ee/${username}`,
           `https://linktr.ee/${cleanName}`,
@@ -457,13 +508,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // First enrich with Apple Music to get the real artist name
-    await enrichWithAppleMusic(result);
+    // Enrich with Apple Music + Spotify name search in parallel
+    await Promise.all([
+      enrichWithAppleMusic(result),
+      enrichWithSpotify(result, baseUrl),
+    ]);
 
-    // If no Spotify found from links, search Spotify by artist name
-    await enrichWithSpotify(result, baseUrl);
-
-    // After Apple Music gives us the real name, try bio link scrape with name-based URLs
+    // After name resolution, try slug-based bio link scrape if still missing music links
     if (result.artistName && Object.keys(result.musicLinks).length <= 1) {
       const nameSlug = result.artistName.toLowerCase().replace(/\s+/g, "");
       const nameSlugDash = result.artistName.toLowerCase().replace(/\s+/g, "-");
@@ -481,14 +532,17 @@ export async function POST(request: NextRequest) {
             result.musicLinks = { ...result.musicLinks, ...musicLinksFound };
             result.socialLinks = { ...result.socialLinks, ...socialLinksFound };
             const spotifyUrl = findSpotifyFromLinks(linkData.links);
-            if (spotifyUrl) result.musicLinks.spotify = spotifyUrl;
+            if (spotifyUrl && !result.musicLinks.spotify) result.musicLinks.spotify = spotifyUrl;
             break;
           }
         } catch { /* try next */ }
       }
     }
 
-    // Now enrich with platform stats (needs socialLinks/musicLinks populated first)
+    // If Spotify was found via slug fallback but not yet fetched, search again
+    await enrichWithSpotify(result, baseUrl);
+
+    // Platform stats (needs socialLinks/musicLinks populated first)
     await enrichWithPlatformStats(result, baseUrl);
 
     // Ensure Apple Music link is set

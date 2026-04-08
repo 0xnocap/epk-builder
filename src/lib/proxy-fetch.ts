@@ -4,13 +4,14 @@
  */
 export async function proxyFetch(
   url: string,
-  options?: RequestInit & { render?: boolean }
+  options?: RequestInit & { render?: boolean; keepHeaders?: boolean }
 ): Promise<Response> {
   const apiKey = process.env.SCRAPER_API_KEY;
 
   if (apiKey) {
     const renderParam = options?.render ? "&render=true" : "";
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}${renderParam}&url=${encodeURIComponent(url)}`;
+    const keepHeaders = options?.keepHeaders || options?.headers ? "&keep_headers=true" : "";
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}${renderParam}${keepHeaders}&url=${encodeURIComponent(url)}`;
     return fetch(proxyUrl, {
       method: options?.method || "GET",
       headers: {
